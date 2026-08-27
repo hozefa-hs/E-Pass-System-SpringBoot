@@ -5,15 +5,13 @@ import lombok.*;
 
 //UserResponseDto is used to give response when user is successfully registered.
 
-@Data
 @Getter
 @Setter
-@NoArgsConstructor
 @AllArgsConstructor
+@NoArgsConstructor
 public class UserResponseDto {
 
-    private Long id;
+    private Long userId;
     private String username;
-    private String password;
     private Role role;
 }

@@ -6,7 +6,6 @@ import com.porfolio.EPassSystemSpringboot.enums.Role;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
-@Data
 @Getter
 @Setter
 @NoArgsConstructor

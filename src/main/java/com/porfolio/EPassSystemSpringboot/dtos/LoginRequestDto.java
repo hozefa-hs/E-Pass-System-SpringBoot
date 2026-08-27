@@ -3,7 +3,6 @@ package com.porfolio.EPassSystemSpringboot.dtos;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
-@Data
 @Getter
 @Setter
 @AllArgsConstructor
@@ -13,6 +12,6 @@ public class LoginRequestDto {
     @NotBlank(message = "username is required")
     private String username;
 
-    @NotBlank(message = "password id required")
+    @NotBlank(message = "password is required")
     private String password;
 }

@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -29,21 +30,6 @@ public class AuthController {
         UserResponseDto response = authService.registerPassenger(registerUserDto);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
-
-    //@PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("/register-pass-officer")
-    public ResponseEntity<UserResponseDto> registerPassOfficer(@Valid @RequestBody RegisterUserDto registerUserDto) {
-        UserResponseDto response = authService.registerPassOfficer(registerUserDto);
-        return new ResponseEntity<>(response, HttpStatus.CREATED);
-    }
-
-    //@PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("/register-ticket-checker")
-    public ResponseEntity<UserResponseDto> registerTicketChecker(@Valid @RequestBody RegisterUserDto registerUserDto) {
-        UserResponseDto response = authService.registerTicketChecker(registerUserDto);
-        return new ResponseEntity<>(response, HttpStatus.CREATED);
-    }
-
 
     /* This method is commented because Only One Admin exists in the system.
     @PostMapping("/register-admin")

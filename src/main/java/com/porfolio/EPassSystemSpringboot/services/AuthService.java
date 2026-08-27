@@ -6,7 +6,7 @@ import com.porfolio.EPassSystemSpringboot.dtos.RegisterUserDto;
 import com.porfolio.EPassSystemSpringboot.dtos.UserResponseDto;
 import org.springframework.stereotype.Service;
 
-@Service
+
 public interface AuthService {
 
     UserResponseDto registerPassenger(RegisterUserDto registerUserDto);
