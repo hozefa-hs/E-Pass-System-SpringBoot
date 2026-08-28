@@ -1,5 +1,6 @@
 package com.porfolio.EPassSystemSpringboot.services.implementations;
 
+import com.porfolio.EPassSystemSpringboot.exceptions.ResourceNotFoundException;
 import com.porfolio.EPassSystemSpringboot.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -17,6 +18,6 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("Username not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Username not found"));
     }
 }

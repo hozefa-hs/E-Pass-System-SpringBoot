@@ -6,6 +6,7 @@ import com.porfolio.EPassSystemSpringboot.dtos.RegisterUserDto;
 import com.porfolio.EPassSystemSpringboot.dtos.UserResponseDto;
 import com.porfolio.EPassSystemSpringboot.entities.Users;
 import com.porfolio.EPassSystemSpringboot.enums.Role;
+import com.porfolio.EPassSystemSpringboot.exceptions.ResourceNotFoundException;
 import com.porfolio.EPassSystemSpringboot.repositories.UserRepository;
 import com.porfolio.EPassSystemSpringboot.services.AuthService;
 import com.porfolio.EPassSystemSpringboot.utils.JwtUtil;
@@ -37,7 +38,7 @@ public class AuthServiceIMPL implements AuthService {
     public UserResponseDto registerPassenger(RegisterUserDto registerUserDto) {
 
         if (userRepository.findByUsername(registerUserDto.getUsername()).isPresent()) {
-            throw new IllegalArgumentException("Username already exists");
+            throw new ResourceNotFoundException("Username already exists");
         }
 
         Users newUser = new Users();
@@ -55,7 +56,7 @@ public class AuthServiceIMPL implements AuthService {
     public UserResponseDto registerPassOfficer(RegisterUserDto registerUserDto) {
 
         if (userRepository.findByUsername(registerUserDto.getUsername()).isPresent()) {
-            throw new IllegalArgumentException("Username already exists");
+            throw new ResourceNotFoundException("Username already exists");
         }
 
         Users newUser = new Users();
@@ -72,7 +73,7 @@ public class AuthServiceIMPL implements AuthService {
     public UserResponseDto registerTicketChecker(RegisterUserDto registerUserDto) {
 
         if (userRepository.findByUsername(registerUserDto.getUsername()).isPresent()) {
-            throw new IllegalArgumentException("Username already exists");
+            throw new ResourceNotFoundException("Username already exists");
         }
 
         Users newUser = new Users();
@@ -88,7 +89,7 @@ public class AuthServiceIMPL implements AuthService {
     @Override
     public LoginResponseDto login(LoginRequestDto loginRequestDto) {
 
-        Users user = userRepository.findByUsername(loginRequestDto.getUsername()).orElseThrow(() -> new UsernameNotFoundException("Username not found while login"));
+        Users user = userRepository.findByUsername(loginRequestDto.getUsername()).orElseThrow(() -> new ResourceNotFoundException("Username not found while login"));
 
         try {
             //first authenticate the user
@@ -99,8 +100,8 @@ public class AuthServiceIMPL implements AuthService {
 
             return new LoginResponseDto(jwtToken, loginRequestDto.getUsername(), user.getRole());
 
-        } catch (AuthenticationException e) {
-            throw new RuntimeException("Error while login : " + e);
+        } catch (ResourceNotFoundException e) {
+            throw new ResourceNotFoundException("Error while login : "+e);
         }
     }
 
@@ -111,7 +112,7 @@ public class AuthServiceIMPL implements AuthService {
     public UserResponseDto registerAdmin(RegisterUserDto registerUserDto) {
 
         if (userRepository.findByUsername(registerUserDto.getUsername()).isPresent()) {
-            throw new IllegalArgumentException("Username already exists");
+            throw new ResourceNotFoundException("Username already exists");
         }
 
         Users newUser = new Users();
