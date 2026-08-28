@@ -2,6 +2,7 @@ package com.porfolio.EPassSystemSpringboot.services.implementations;
 
 import com.porfolio.EPassSystemSpringboot.dtos.UserResponseDto;
 import com.porfolio.EPassSystemSpringboot.entities.Users;
+import com.porfolio.EPassSystemSpringboot.enums.Role;
 import com.porfolio.EPassSystemSpringboot.exceptions.ResourceNotFoundException;
 import com.porfolio.EPassSystemSpringboot.repositories.UserRepository;
 import com.porfolio.EPassSystemSpringboot.services.UserService;
@@ -32,10 +33,10 @@ public class UserServiceIMPL implements UserService {
 
     @Override
     public void deleteUser(Long userId) {
-        if(userId == null) {
-            throw new ResourceNotFoundException("User id cannot be null");
+        Users user = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User with id " + userId + " not found"));
+        if(user.getRole() == Role.ADMIN) {
+            throw new ResourceNotFoundException("Admin account cannot be deleted");
         }
-        userRepository.findById(userId).orElseThrow(()->new ResourceNotFoundException("User with id "+userId+" not found"));
         userRepository.deleteById(userId);
     }
 }
