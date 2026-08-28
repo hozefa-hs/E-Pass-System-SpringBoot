@@ -5,6 +5,7 @@ import com.porfolio.EPassSystemSpringboot.dtos.LoginResponseDto;
 import com.porfolio.EPassSystemSpringboot.dtos.RegisterUserDto;
 import com.porfolio.EPassSystemSpringboot.dtos.UserResponseDto;
 import com.porfolio.EPassSystemSpringboot.services.AuthService;
+import com.porfolio.EPassSystemSpringboot.services.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -31,13 +32,13 @@ public class AuthController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
-    /* This method is commented because Only One Admin exists in the system.
-    @PostMapping("/register-admin")
+    //This method is commented because Only One Admin exists in the system.
+    /*@PostMapping("/register-admin")
     public ResponseEntity<UserResponseDto> registerAdmin(@Valid @RequestBody RegisterUserDto registerUserDto) {
-        UserResponseDto response = userService.registerAdmin(registerUserDto);
+        UserResponseDto response = authService.registerAdmin(registerUserDto);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
-    }
-    */
+    }*/
+
 
 
 }
