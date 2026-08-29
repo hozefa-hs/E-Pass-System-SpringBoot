@@ -33,6 +33,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/public/**", "/auth/**").permitAll()
                         .requestMatchers("/admin/**").hasRole(Role.ADMIN.name())
+                        .anyRequest().authenticated()
                 );
 
         //request first comes to JwtAuthFilter and if user credentials are correct it will set
