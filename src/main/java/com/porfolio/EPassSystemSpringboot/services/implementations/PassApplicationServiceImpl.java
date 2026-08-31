@@ -17,6 +17,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -34,15 +35,15 @@ public class PassApplicationServiceImpl implements PassApplicationService {
 
         Users passenger = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found while creating application"));
 
-        if(passenger.getRole() != Role.PASSENGER) {
+        if (passenger.getRole() != Role.PASSENGER) {
             throw new ResourceNotFoundException("Only passengers can apply for pass");
         }
 
-        if(passRepository.existsByUserAndPassStatus(passenger, PassStatus.ACTIVE)) {
+        if (passRepository.existsByUserAndPassStatus(passenger, PassStatus.ACTIVE)) {
             throw new ResourceNotFoundException("You already have an active pass");
         }
 
-        if(passApplicationRepository.existsByPassengerAndApplicationStatus(passenger, ApplicationStatus.PENDING)){
+        if (passApplicationRepository.existsByPassengerAndApplicationStatus(passenger, ApplicationStatus.PENDING)) {
             throw new ResourceNotFoundException("You already have a pending application");
         }
 
@@ -58,13 +59,38 @@ public class PassApplicationServiceImpl implements PassApplicationService {
         return modelMapper.map(savedApplication, PassApplicationResponseDto.class);
     }
 
+    @Override
+    public List<PassApplicationResponseDto> getOwnApplications(Long userId) {
+        List<PassApplication> applicationList = passApplicationRepository.findAllByPassengerUserId(userId);
 
+        return applicationList
+                .stream()
+                .map(passApplication -> modelMapper.map(passApplication, PassApplicationResponseDto.class))
+                .toList();
+    }
+
+    @Override
+    public List<PassApplicationResponseDto> getPendingApplications() {
+
+        List<PassApplication> allPendingApplications = passApplicationRepository.findAllByApplicationStatus(ApplicationStatus.PENDING);
+
+        return allPendingApplications
+                .stream()
+                .map(passApplication -> modelMapper.map(passApplication, PassApplicationResponseDto.class))
+                .toList();
+    }
+
+    @Override
+    public PassApplicationResponseDto getApplicationById(Long applicationId) {
+        PassApplication passApplication = passApplicationRepository.findById(applicationId).orElseThrow(() -> new ResourceNotFoundException("Pass application with id " + applicationId + " not found"));
+        return modelMapper.map(passApplication, PassApplicationResponseDto.class);
+    }
 
 
     private String generateApplicationNumber() {
         return "APP-" + UUID.randomUUID()
                 .toString()
-                .substring(0,8)
+                .substring(0, 8)
                 .toUpperCase();
     }
 }

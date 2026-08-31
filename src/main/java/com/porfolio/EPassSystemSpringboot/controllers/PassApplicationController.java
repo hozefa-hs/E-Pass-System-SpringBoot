@@ -9,14 +9,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/passApplication")
+@RequestMapping("/application")
 public class PassApplicationController {
 
     private final PassApplicationService passApplicationService;
@@ -30,5 +29,26 @@ public class PassApplicationController {
         PassApplicationResponseDto responseDto = passApplicationService.createApplication(createPassApplicationDto, users.getUserId());
         return ResponseEntity.ok(responseDto);
     }
+
+    @GetMapping("/my-applications")
+    public ResponseEntity<List<PassApplicationResponseDto>> getOwnApplications(@AuthenticationPrincipal Users users) {
+        List<PassApplicationResponseDto> passApplicationList = passApplicationService.getOwnApplications(users.getUserId());
+        return ResponseEntity.ok(passApplicationList);
+    }
+
+    @GetMapping("/all-pending-applications")
+    @PreAuthorize("hasRole('PASS_OFFICER')")
+    public ResponseEntity<List<PassApplicationResponseDto>> getAllPendingApplications() {
+        List<PassApplicationResponseDto> pendingApplications = passApplicationService.getPendingApplications();
+        return ResponseEntity.ok(pendingApplications);
+    }
+
+    @GetMapping("/applocationById/{applicationId}")
+    @PreAuthorize("hasRole('PASS_OFFICER')")
+    public ResponseEntity<PassApplicationResponseDto> getApplicationById(@PathVariable Long applicationId){
+        PassApplicationResponseDto applicationById = passApplicationService.getApplicationById(applicationId);
+        return ResponseEntity.ok(applicationById);
+    }
+
 
 }
