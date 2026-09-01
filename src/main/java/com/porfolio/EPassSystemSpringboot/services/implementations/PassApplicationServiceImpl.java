@@ -7,6 +7,7 @@ import com.porfolio.EPassSystemSpringboot.entities.Users;
 import com.porfolio.EPassSystemSpringboot.enums.ApplicationStatus;
 import com.porfolio.EPassSystemSpringboot.enums.PassStatus;
 import com.porfolio.EPassSystemSpringboot.enums.Role;
+import com.porfolio.EPassSystemSpringboot.exceptions.BusinessException;
 import com.porfolio.EPassSystemSpringboot.exceptions.ResourceNotFoundException;
 import com.porfolio.EPassSystemSpringboot.repositories.PassApplicationRepository;
 import com.porfolio.EPassSystemSpringboot.repositories.PassRepository;
@@ -14,6 +15,10 @@ import com.porfolio.EPassSystemSpringboot.repositories.UserRepository;
 import com.porfolio.EPassSystemSpringboot.services.PassApplicationService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -36,15 +41,15 @@ public class PassApplicationServiceImpl implements PassApplicationService {
         Users passenger = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found while creating application"));
 
         if (passenger.getRole() != Role.PASSENGER) {
-            throw new ResourceNotFoundException("Only passengers can apply for pass");
+            throw new BusinessException("Only passengers can apply for pass");
         }
 
         if (passRepository.existsByUserAndPassStatus(passenger, PassStatus.ACTIVE)) {
-            throw new ResourceNotFoundException("You already have an active pass");
+            throw new BusinessException("You already have an active pass");
         }
 
         if (passApplicationRepository.existsByPassengerAndApplicationStatus(passenger, ApplicationStatus.PENDING)) {
-            throw new ResourceNotFoundException("You already have a pending application");
+            throw new BusinessException("You already have a pending application");
         }
 
         PassApplication passApplication = modelMapper.map(createPassApplicationDto, PassApplication.class);
@@ -61,6 +66,7 @@ public class PassApplicationServiceImpl implements PassApplicationService {
 
     @Override
     public List<PassApplicationResponseDto> getOwnApplications(Long userId) {
+
         List<PassApplication> applicationList = passApplicationRepository.findAllByPassengerUserId(userId);
 
         return applicationList
@@ -70,20 +76,38 @@ public class PassApplicationServiceImpl implements PassApplicationService {
     }
 
     @Override
-    public List<PassApplicationResponseDto> getPendingApplications() {
+    public Page<PassApplicationResponseDto> getPendingApplications(int page, int size) {
 
-        List<PassApplication> allPendingApplications = passApplicationRepository.findAllByApplicationStatus(ApplicationStatus.PENDING);
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<PassApplication> allPendingApplications = passApplicationRepository.findAllByApplicationStatus(ApplicationStatus.PENDING, pageable);
 
         return allPendingApplications
-                .stream()
-                .map(passApplication -> modelMapper.map(passApplication, PassApplicationResponseDto.class))
-                .toList();
+                .map(passApplication -> modelMapper.map(passApplication, PassApplicationResponseDto.class));
     }
 
     @Override
-    public PassApplicationResponseDto getApplicationById(Long applicationId) {
-        PassApplication passApplication = passApplicationRepository.findById(applicationId).orElseThrow(() -> new ResourceNotFoundException("Pass application with id " + applicationId + " not found"));
+    public PassApplicationResponseDto getApplicationById(Long applicationId, Long userId) {
+
+        Users user = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        //These conditions satisfy that when the user is passenger. they can only see their own application(ownership check)
+        //and when the user is Pass Officer. He can see any application.
+        PassApplication passApplication;
+        if (user.getRole() == Role.PASSENGER) {
+            passApplication = passApplicationRepository.findByApplicationIdAndPassengerUserId(applicationId, userId);
+
+            // Application exists, but it does not belong to this passenger
+            if (passApplication == null) {
+                throw new AccessDeniedException("You are not authorized to view this application");
+            }
+        }
+        else { // else condition when Role is Pass Officer
+            passApplication = passApplicationRepository.findById(applicationId).orElseThrow(() -> new ResourceNotFoundException("Pass application with id " + applicationId + " not found"));
+        }
+
         return modelMapper.map(passApplication, PassApplicationResponseDto.class);
+
     }
 
 

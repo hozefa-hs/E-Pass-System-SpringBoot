@@ -23,6 +23,8 @@ public class PassApplicationResponseDto {
     private PassValidity passValidity;
     private ApplicationStatus applicationStatus;
     private LocalDateTime appliedAt;
+    private String rejectionReason;
+    private LocalDateTime reviewedAt;
 
 
 }

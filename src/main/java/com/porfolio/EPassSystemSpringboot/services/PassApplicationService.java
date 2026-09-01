@@ -2,6 +2,7 @@ package com.porfolio.EPassSystemSpringboot.services;
 
 import com.porfolio.EPassSystemSpringboot.dtos.CreatePassApplicationDto;
 import com.porfolio.EPassSystemSpringboot.dtos.PassApplicationResponseDto;
+import org.springframework.data.domain.Page;
 
 import java.util.List;
 
@@ -11,8 +12,8 @@ public interface PassApplicationService {
 
     List<PassApplicationResponseDto> getOwnApplications(Long userId);
 
-    List<PassApplicationResponseDto> getPendingApplications();
+    Page<PassApplicationResponseDto> getPendingApplications(int page, int size);
 
-    PassApplicationResponseDto getApplicationById(Long applicationId);
+    PassApplicationResponseDto getApplicationById(Long applicationId, Long userId);
 
 }
