@@ -7,6 +7,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "pass_applications")
@@ -27,6 +29,10 @@ public class PassApplication {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "passenger_id", nullable = false)
     private Users passenger;
+
+
+    @OneToMany(mappedBy = "passApplication")
+    private List<Document> documents = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
