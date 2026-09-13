@@ -1,5 +1,6 @@
 package com.porfolio.EPassSystemSpringboot.services.implementations;
 
+import com.porfolio.EPassSystemSpringboot.exceptions.ResourceNotFoundException;
 import com.porfolio.EPassSystemSpringboot.services.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
@@ -33,10 +35,15 @@ public class S3FileStorageServiceImpl implements FileStorageService {
 
 
     @Override
-    public String uploadFile(MultipartFile file) throws IOException {
+    public String uploadFile(MultipartFile file, Long applicationId) throws IOException {
 
         //objectKey is basically new file name in S3
-        String objectKey = "documents" + File.separator + UUID.randomUUID() + "-" + file.getOriginalFilename();
+        String objectKey = "documents/"
+                + applicationId
+                + "/"
+                + UUID.randomUUID()
+                + "-"
+                + file.getOriginalFilename();
 
         //building object to put in S3
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
@@ -86,7 +93,27 @@ public class S3FileStorageServiceImpl implements FileStorageService {
 
 
     @Override
-    public void deleteFile(String fileUrl) {
+    public void deleteFile(String objectKey) {
+
+        if(objectKey == null || objectKey.isEmpty()) {
+            throw new ResourceNotFoundException("File not found while deleting");
+        }
+
+        DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
+                .bucket(bucketName)
+                .key(objectKey)
+                .build();
+
+        try {
+
+            s3Client.deleteObject(deleteObjectRequest);
+            log.info("Successfully deleted S3 object: {}", objectKey);
+
+        } catch (RuntimeException e) {
+            log.error("Failed to delete S3 object: {}", objectKey, e);
+            throw e;
+        }
+
 
     }
 

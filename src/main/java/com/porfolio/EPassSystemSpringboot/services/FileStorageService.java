@@ -6,7 +6,7 @@ import java.io.IOException;
 
 public interface FileStorageService {
 
-    String uploadFile(MultipartFile file) throws IOException;
+    String uploadFile(MultipartFile file, Long applicationId) throws IOException;
 
     String getPresignedUrl(String objectKey);
 

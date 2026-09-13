@@ -1,6 +1,7 @@
 package com.porfolio.EPassSystemSpringboot.repositories;
 
 import com.porfolio.EPassSystemSpringboot.entities.Document;
+import com.porfolio.EPassSystemSpringboot.enums.DocumentType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -11,4 +12,7 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
     List<Document> findAllByPassApplicationApplicationId(Long applicationId);
 
     Optional<Document> findByDocumentIdAndPassApplicationPassengerUserId(Long documentId, Long userId);
+
+    //Application 101 + STUDENT_ID   ->    existing Document?
+    Optional<Document> findByPassApplicationApplicationIdAndDocumentType(Long applicationId, DocumentType documentType);
 }

@@ -4,24 +4,24 @@ import com.porfolio.EPassSystemSpringboot.dtos.DocumentResponseDto;
 import com.porfolio.EPassSystemSpringboot.dtos.UploadDocumentResponseDto;
 import com.porfolio.EPassSystemSpringboot.entities.Document;
 import com.porfolio.EPassSystemSpringboot.entities.PassApplication;
-import com.porfolio.EPassSystemSpringboot.entities.Users;
 import com.porfolio.EPassSystemSpringboot.enums.ApplicationStatus;
 import com.porfolio.EPassSystemSpringboot.enums.DocumentType;
 import com.porfolio.EPassSystemSpringboot.exceptions.BusinessException;
 import com.porfolio.EPassSystemSpringboot.exceptions.ResourceNotFoundException;
 import com.porfolio.EPassSystemSpringboot.repositories.DocumentRepository;
 import com.porfolio.EPassSystemSpringboot.repositories.PassApplicationRepository;
-import com.porfolio.EPassSystemSpringboot.repositories.UserRepository;
 import com.porfolio.EPassSystemSpringboot.services.DocumentService;
 import com.porfolio.EPassSystemSpringboot.services.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -30,17 +30,22 @@ public class DocumentServiceImpl implements DocumentService {
 
     private final FileStorageService fileStorageService;
     private final PassApplicationRepository passApplicationRepository;
-    private final UserRepository userRepository;
     private final DocumentRepository documentRepository;
     private final ModelMapper modelMapper;
 
-
+    @Transactional
     @Override
     public UploadDocumentResponseDto uploadDocument(
             Long applicationId,
             MultipartFile file,
             DocumentType documentType,
             Long userId) throws IOException {
+
+        //uploadDocument()
+        //    ↓
+        //document exists?
+        //    ├── No  → create
+        //    └── Yes → replace
 
         //ownership check
         PassApplication passApplication = passApplicationRepository.findByApplicationIdAndPassengerUserId(applicationId, userId);
@@ -61,35 +66,98 @@ public class DocumentServiceImpl implements DocumentService {
         //validate file
         validateFile(file);
 
-        //upload file to S3
-        String uploadedFile = fileStorageService.uploadFile(file);
 
-        //Create Document entity
-        Document document = new Document();
-        document.setPassApplication(passApplication);
-        document.setDocumentType(documentType);
-        document.setFileName(file.getOriginalFilename());
-        document.setFileUrl(uploadedFile);
-        document.setContentType(file.getContentType());
+        //Check whether this document type already exists in pass application
+        Optional<Document> existingDocument = documentRepository.findByPassApplicationApplicationIdAndDocumentType(applicationId, documentType);
+
+
+        String oldFileUrl = existingDocument.map(Document::getFileUrl).orElse(null);
+
+
+        //upload new file to S3
+        String uploadedFile = fileStorageService.uploadFile(file, applicationId);
+
+
+        Document document;
+
+        if (existingDocument.isPresent()) {
+
+            // Existing document -> replace metadata
+            document = existingDocument.get();
+
+            document.setFileName(file.getOriginalFilename());
+            document.setFileUrl(uploadedFile);
+            document.setContentType(file.getContentType());
+        } else {
+
+            // First upload -> create new document
+            document = new Document();
+
+            document.setPassApplication(passApplication);
+            document.setDocumentType(documentType);
+            document.setFileName(file.getOriginalFilename());
+            document.setFileUrl(uploadedFile);
+            document.setContentType(file.getContentType());
+        }
 
         Document savedDocument;
         try {
-            //Save to PostgreSQL
+
+            //Save database changes
             savedDocument = documentRepository.save(document);
-        }
-        catch (Exception e) {
+        } catch (RuntimeException e) {
+
+            // DB failed -> delete newly uploaded S3 object
             fileStorageService.deleteFile(uploadedFile);
             throw e;
         }
 
-        //convert to dto
-        UploadDocumentResponseDto response = modelMapper.map(savedDocument, UploadDocumentResponseDto.class);
 
-        response.setMessage("Document uploaded successfully");
-        //Return UploadDocumentResponseDto
-        return response;
+        //Delete old S3 object only after DB operation succeeds
+        if (oldFileUrl != null && !oldFileUrl.equals(uploadedFile)) {
+            fileStorageService.deleteFile(oldFileUrl);
+        }
+
+
+        //convert to dto
+        UploadDocumentResponseDto uploadDocumentResponseDto = modelMapper.map(savedDocument, UploadDocumentResponseDto.class);
+
+        uploadDocumentResponseDto.setMessage(
+                existingDocument.isPresent()
+                        ? "Document replaced successfully"
+                        : "Document uploaded successfully"
+        );
+
+        return uploadDocumentResponseDto;
 
     }
+
+
+    //First time upload scenario
+/*
+    Application #10     //Pass application id
+    STUDENT_ID          //Document type
+       ↓
+    new S3 object A
+       ↓
+    new Document row A
+*/
+
+    /*---------------------------------------------*/
+
+    //Corrected upload scenario
+/*
+
+    Application #10
+    STUDENT_ID
+       ↓
+    S3 object B
+       ↓
+    update Document row A
+       ↓
+    delete S3 object A
+
+*/
 
 
     @Override

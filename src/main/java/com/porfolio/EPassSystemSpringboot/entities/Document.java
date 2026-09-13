@@ -5,7 +5,12 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "documents")
+@Table(
+        name = "documents",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_application_document_type", columnNames = {"application_id", "document_type"})
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
