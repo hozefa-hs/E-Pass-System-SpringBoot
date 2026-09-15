@@ -4,12 +4,15 @@ import com.porfolio.EPassSystemSpringboot.dtos.DocumentResponseDto;
 import com.porfolio.EPassSystemSpringboot.dtos.UploadDocumentResponseDto;
 import com.porfolio.EPassSystemSpringboot.entities.Document;
 import com.porfolio.EPassSystemSpringboot.entities.PassApplication;
+import com.porfolio.EPassSystemSpringboot.entities.Users;
 import com.porfolio.EPassSystemSpringboot.enums.ApplicationStatus;
 import com.porfolio.EPassSystemSpringboot.enums.DocumentType;
+import com.porfolio.EPassSystemSpringboot.enums.Role;
 import com.porfolio.EPassSystemSpringboot.exceptions.BusinessException;
 import com.porfolio.EPassSystemSpringboot.exceptions.ResourceNotFoundException;
 import com.porfolio.EPassSystemSpringboot.repositories.DocumentRepository;
 import com.porfolio.EPassSystemSpringboot.repositories.PassApplicationRepository;
+import com.porfolio.EPassSystemSpringboot.repositories.UserRepository;
 import com.porfolio.EPassSystemSpringboot.services.DocumentService;
 import com.porfolio.EPassSystemSpringboot.services.FileStorageService;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +35,7 @@ public class DocumentServiceImpl implements DocumentService {
     private final PassApplicationRepository passApplicationRepository;
     private final DocumentRepository documentRepository;
     private final ModelMapper modelMapper;
+    private final UserRepository userRepository;
 
     @Transactional
     @Override
@@ -162,12 +166,43 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     public List<DocumentResponseDto> getDocumentsByApplication(Long applicationId, Long userId) {
-        return List.of();
+
+        Users user = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        //These conditions satisfy that when the user is passenger. they can only see their own documents(ownership check)
+        //and when the user is Pass Officer. He can see any application's documents.
+        List<Document> documentList;
+        if(user.getRole() == Role.PASSENGER) {
+
+            documentList = documentRepository.findAllByPassApplicationApplicationIdAndPassApplicationPassengerUserId(applicationId, userId);
+
+            // Documents exists, but it does not belong to this passenger
+            if(documentList.isEmpty()){
+                throw new AccessDeniedException("You are not authorized to view this documents");
+            }
+        }
+        else {  // else condition when Role is Pass Officer
+            documentList = documentRepository.findAllByPassApplicationApplicationId(applicationId);
+        }
+
+        return documentList
+                .stream()
+                .map(document -> modelMapper.map(document, DocumentResponseDto.class))
+                .toList();
     }
 
     @Override
     public void deleteDocument(Long documentId, Long userId) {
+        if (documentId == null ) {
+            throw new ResourceNotFoundException("Document id not found while deleting document");
+        }
 
+        Optional<Document> document = documentRepository.findByDocumentIdAndPassApplicationPassengerUserId(documentId, userId);
+        if (document.isEmpty()) {
+            throw new AccessDeniedException("You are not authorized to delete this document");
+        }
+
+        documentRepository.deleteById(documentId);
     }
 
 

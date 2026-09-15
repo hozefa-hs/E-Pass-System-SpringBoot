@@ -13,6 +13,9 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
 
     Optional<Document> findByDocumentIdAndPassApplicationPassengerUserId(Long documentId, Long userId);
 
+    //ownership check query
+    List<Document> findAllByPassApplicationApplicationIdAndPassApplicationPassengerUserId(Long applicationId, Long userId);
+
     //Application 101 + STUDENT_ID   ->    existing Document?
     Optional<Document> findByPassApplicationApplicationIdAndDocumentType(Long applicationId, DocumentType documentType);
 }
