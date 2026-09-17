@@ -78,7 +78,11 @@ public class PassApplicationServiceImpl implements PassApplicationService {
     @Override
     public Page<PassApplicationResponseDto> getPendingApplications(int page, int size) {
 
-        Pageable pageable = PageRequest.of(page, size);
+        if (page < 0) {
+            throw new BusinessException("Page must not be negative");
+        }
+        //size = Math.min(size, 50);
+        Pageable pageable = PageRequest.of(page, Math.min(size, 50));
 
         Page<PassApplication> allPendingApplications = passApplicationRepository.findAllByApplicationStatus(ApplicationStatus.PENDING, pageable);
 
@@ -102,8 +106,11 @@ public class PassApplicationServiceImpl implements PassApplicationService {
                 throw new AccessDeniedException("You are not authorized to view this application");
             }
         }
-        else { // else condition when Role is Pass Officer
+        else if (user.getRole() == Role.PASS_OFFICER) {
             passApplication = passApplicationRepository.findById(applicationId).orElseThrow(() -> new ResourceNotFoundException("Pass application with id " + applicationId + " not found"));
+        }
+        else {
+            throw new AccessDeniedException("You are not authorized to view this application");
         }
 
         return modelMapper.map(passApplication, PassApplicationResponseDto.class);

@@ -37,7 +37,7 @@ public class DocumentServiceImpl implements DocumentService {
     private final ModelMapper modelMapper;
     private final UserRepository userRepository;
 
-    @Transactional
+
     @Override
     public UploadDocumentResponseDto uploadDocument(
             Long applicationId,
@@ -180,9 +180,15 @@ public class DocumentServiceImpl implements DocumentService {
             if(documentList.isEmpty()){
                 throw new AccessDeniedException("You are not authorized to view this documents");
             }
+
+            /*fix : First verify application ownership, then retrieve its documents.*/
+
         }
-        else {  // else condition when Role is Pass Officer
+        else if (user.getRole() == Role.PASS_OFFICER) {
             documentList = documentRepository.findAllByPassApplicationApplicationId(applicationId);
+        }
+        else {
+            throw new AccessDeniedException("You are not authorized to view this documents");
         }
 
         return documentList
@@ -202,7 +208,15 @@ public class DocumentServiceImpl implements DocumentService {
             throw new AccessDeniedException("You are not authorized to delete this document");
         }
 
+        ApplicationStatus status = document.get().getPassApplication().getApplicationStatus();
+        if(status != ApplicationStatus.PENDING && status != ApplicationStatus.REJECTED) {
+            throw new BusinessException("Document cannot be deleted for approved applications");
+        }
+
+        String fileUrl = document.get().getFileUrl();
+
         documentRepository.deleteById(documentId);
+        fileStorageService.deleteFile(fileUrl);
     }
 
 
@@ -220,6 +234,9 @@ public class DocumentServiceImpl implements DocumentService {
         }
 
         String originalFileName = file.getOriginalFilename();
+        if (originalFileName == null || originalFileName.isBlank()) {
+            throw new BusinessException("File name is required");
+        }
         String extension = originalFileName
                 .substring(originalFileName.lastIndexOf('.') + 1)
                 .toLowerCase();

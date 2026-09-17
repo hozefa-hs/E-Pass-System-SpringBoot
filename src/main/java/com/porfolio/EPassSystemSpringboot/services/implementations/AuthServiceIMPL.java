@@ -6,6 +6,7 @@ import com.porfolio.EPassSystemSpringboot.dtos.RegisterUserDto;
 import com.porfolio.EPassSystemSpringboot.dtos.UserResponseDto;
 import com.porfolio.EPassSystemSpringboot.entities.Users;
 import com.porfolio.EPassSystemSpringboot.enums.Role;
+import com.porfolio.EPassSystemSpringboot.exceptions.BusinessException;
 import com.porfolio.EPassSystemSpringboot.exceptions.ResourceNotFoundException;
 import com.porfolio.EPassSystemSpringboot.repositories.UserRepository;
 import com.porfolio.EPassSystemSpringboot.services.AuthService;
@@ -38,7 +39,7 @@ public class AuthServiceIMPL implements AuthService {
     public UserResponseDto registerPassenger(RegisterUserDto registerUserDto) {
 
         if (userRepository.findByUsername(registerUserDto.getUsername()).isPresent()) {
-            throw new ResourceNotFoundException("Username already exists");
+            throw new BusinessException("Username already exists");
         }
 
         Users newUser = new Users();
@@ -56,7 +57,7 @@ public class AuthServiceIMPL implements AuthService {
     public UserResponseDto registerPassOfficer(RegisterUserDto registerUserDto) {
 
         if (userRepository.findByUsername(registerUserDto.getUsername()).isPresent()) {
-            throw new ResourceNotFoundException("Username already exists");
+            throw new BusinessException("Username already exists");
         }
 
         Users newUser = new Users();
@@ -73,7 +74,7 @@ public class AuthServiceIMPL implements AuthService {
     public UserResponseDto registerTicketChecker(RegisterUserDto registerUserDto) {
 
         if (userRepository.findByUsername(registerUserDto.getUsername()).isPresent()) {
-            throw new ResourceNotFoundException("Username already exists");
+            throw new BusinessException("Username already exists");
         }
 
         Users newUser = new Users();
@@ -100,8 +101,8 @@ public class AuthServiceIMPL implements AuthService {
 
             return new LoginResponseDto(jwtToken, loginRequestDto.getUsername(), user.getRole());
 
-        } catch (ResourceNotFoundException e) {
-            throw new ResourceNotFoundException("Error while login : "+e);
+        } catch (AuthenticationException e) {
+            throw new BusinessException("Error while login : " + e);
         }
     }
 

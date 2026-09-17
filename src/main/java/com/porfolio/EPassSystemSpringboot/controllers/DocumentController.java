@@ -26,7 +26,7 @@ public class DocumentController {
 
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('PASS_OFFICER', 'PASSENGER')")
+    @PreAuthorize("hasRole('PASSENGER')")
     public ResponseEntity<UploadDocumentResponseDto> uploadDocument(
             @RequestParam("applicationId") Long applicationId,
             @RequestParam("documentType") DocumentType documentType,

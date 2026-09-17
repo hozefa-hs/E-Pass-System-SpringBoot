@@ -38,6 +38,7 @@ public class AwsS3Config {
     }
 
     @Bean
+    @Profile(value = {"dev", "prod"})
     public S3Presigner s3Presigner() {
 
         return S3Presigner.builder()
