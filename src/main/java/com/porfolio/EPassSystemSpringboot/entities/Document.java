@@ -34,7 +34,7 @@ public class Document {
     private String fileName;
 
     @Column(nullable = false)
-    private String fileUrl;
+    private String storageKey;
 
     @Column(nullable = false)
     private String contentType;

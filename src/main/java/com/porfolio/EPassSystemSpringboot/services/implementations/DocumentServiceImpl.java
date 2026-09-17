@@ -19,7 +19,6 @@ import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -75,7 +74,7 @@ public class DocumentServiceImpl implements DocumentService {
         Optional<Document> existingDocument = documentRepository.findByPassApplicationApplicationIdAndDocumentType(applicationId, documentType);
 
 
-        String oldFileUrl = existingDocument.map(Document::getFileUrl).orElse(null);
+        String oldFileUrl = existingDocument.map(Document::getStorageKey).orElse(null);
 
 
         //upload new file to S3
@@ -90,7 +89,7 @@ public class DocumentServiceImpl implements DocumentService {
             document = existingDocument.get();
 
             document.setFileName(file.getOriginalFilename());
-            document.setFileUrl(uploadedFile);
+            document.setStorageKey(uploadedFile);
             document.setContentType(file.getContentType());
         } else {
 
@@ -100,7 +99,7 @@ public class DocumentServiceImpl implements DocumentService {
             document.setPassApplication(passApplication);
             document.setDocumentType(documentType);
             document.setFileName(file.getOriginalFilename());
-            document.setFileUrl(uploadedFile);
+            document.setStorageKey(uploadedFile);
             document.setContentType(file.getContentType());
         }
 
@@ -125,6 +124,8 @@ public class DocumentServiceImpl implements DocumentService {
 
         //convert to dto
         UploadDocumentResponseDto uploadDocumentResponseDto = modelMapper.map(savedDocument, UploadDocumentResponseDto.class);
+
+        uploadDocumentResponseDto.setFileUrl(fileStorageService.getPresignedUrl(savedDocument.getStorageKey()));
 
         uploadDocumentResponseDto.setMessage(
                 existingDocument.isPresent()
@@ -174,14 +175,14 @@ public class DocumentServiceImpl implements DocumentService {
         List<Document> documentList;
         if(user.getRole() == Role.PASSENGER) {
 
-            documentList = documentRepository.findAllByPassApplicationApplicationIdAndPassApplicationPassengerUserId(applicationId, userId);
+            // Verify application belongs to the passenger
+            PassApplication passApplication = passApplicationRepository.findByApplicationIdAndPassengerUserId(applicationId, userId);
 
-            // Documents exists, but it does not belong to this passenger
-            if(documentList.isEmpty()){
-                throw new AccessDeniedException("You are not authorized to view this documents");
+            if(passApplication == null) {
+                throw new AccessDeniedException("You are not authorized to view documents for this application");
             }
 
-            /*fix : First verify application ownership, then retrieve its documents.*/
+            documentList = documentRepository.findAllByPassApplicationApplicationId(applicationId);
 
         }
         else if (user.getRole() == Role.PASS_OFFICER) {
@@ -193,7 +194,18 @@ public class DocumentServiceImpl implements DocumentService {
 
         return documentList
                 .stream()
-                .map(document -> modelMapper.map(document, DocumentResponseDto.class))
+                .map(document -> {
+
+                    DocumentResponseDto response = modelMapper.map(document, DocumentResponseDto.class);
+
+                    // Generate a fresh temporary URL for the private S3 object
+                    String presignedUrl = fileStorageService.getPresignedUrl(document.getStorageKey());
+
+                    response.setFileUrl(presignedUrl);
+
+                    return response;
+
+                })
                 .toList();
     }
 
@@ -213,7 +225,7 @@ public class DocumentServiceImpl implements DocumentService {
             throw new BusinessException("Document cannot be deleted for approved applications");
         }
 
-        String fileUrl = document.get().getFileUrl();
+        String fileUrl = document.get().getStorageKey();
 
         documentRepository.deleteById(documentId);
         fileStorageService.deleteFile(fileUrl);
