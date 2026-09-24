@@ -4,8 +4,8 @@ import com.porfolio.EPassSystemSpringboot.dtos.PassApplicationResponseDto;
 
 public interface ReviewService {
 
-    PassApplicationResponseDto approveApplication(Long applicationId);
+    PassApplicationResponseDto approveApplication(Long applicationId, Long passOfficerId);
 
-    PassApplicationResponseDto rejectApplication(Long applicationId, String rejectionReason);
+    PassApplicationResponseDto rejectApplication(Long applicationId, Long passOfficerId, String rejectionReason);
 
 }

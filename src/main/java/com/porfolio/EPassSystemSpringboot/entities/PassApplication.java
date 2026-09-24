@@ -54,22 +54,11 @@ public class PassApplication {
 
     private LocalDateTime reviewedAt;
 
+    @Version   //optimistic lock
+    private Long version;
+
+    @Column(nullable = false)
+    private Long reviewedByOfficerId;
+
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
