@@ -54,6 +54,10 @@ public class Pass {
 
     @Column(nullable = false)
     private LocalDate validUntil;
+
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "application_id", nullable = false, unique = true)
+    private PassApplication passApplication;
 }
 
 

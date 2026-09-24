@@ -60,5 +60,9 @@ public class PassApplication {
     @Column(nullable = false)
     private Long reviewedByOfficerId;
 
+
+    @OneToOne(mappedBy = "passApplication")
+    private Pass pass;
+
 }
 
