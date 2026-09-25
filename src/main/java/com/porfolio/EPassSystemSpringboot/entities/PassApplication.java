@@ -64,5 +64,8 @@ public class PassApplication {
     @OneToOne(mappedBy = "passApplication")
     private Pass pass;
 
+    @OneToMany(mappedBy = "passApplication")
+    private List<Payment> payments = new ArrayList<>();
+
 }
 
