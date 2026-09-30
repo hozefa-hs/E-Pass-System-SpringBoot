@@ -2,6 +2,7 @@ package com.porfolio.EPassSystemSpringboot.controllers;
 
 import com.porfolio.EPassSystemSpringboot.dtos.PaymentResponseDto;
 import com.porfolio.EPassSystemSpringboot.services.PaymentService;
+import com.razorpay.RazorpayException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +20,7 @@ public class PaymentController {
 
     @PostMapping("/initiate/{applicationId}")
     @PreAuthorize("hasRole('PASSENGER')")
-    public ResponseEntity<PaymentResponseDto> initiatePayment(@PathVariable Long applicationId) {
+    public ResponseEntity<PaymentResponseDto> initiatePayment(@PathVariable Long applicationId) throws RazorpayException {
 
         PaymentResponseDto paymentResponseDto = paymentService.initiatePayment(applicationId);
 

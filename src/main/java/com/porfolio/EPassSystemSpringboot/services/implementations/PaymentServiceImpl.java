@@ -1,7 +1,6 @@
 package com.porfolio.EPassSystemSpringboot.services.implementations;
 
 import com.porfolio.EPassSystemSpringboot.dtos.PaymentResponseDto;
-import com.porfolio.EPassSystemSpringboot.entities.Pass;
 import com.porfolio.EPassSystemSpringboot.entities.PassApplication;
 import com.porfolio.EPassSystemSpringboot.entities.Payment;
 import com.porfolio.EPassSystemSpringboot.enums.ApplicationStatus;
@@ -15,6 +14,8 @@ import com.porfolio.EPassSystemSpringboot.repositories.PaymentRepository;
 import com.porfolio.EPassSystemSpringboot.services.PassPriceService;
 import com.porfolio.EPassSystemSpringboot.services.PassService;
 import com.porfolio.EPassSystemSpringboot.services.PaymentService;
+import com.porfolio.EPassSystemSpringboot.services.RazorpayService;
+import com.razorpay.RazorpayException;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
@@ -34,11 +35,12 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentRepository paymentRepository;
     private final PassPriceService passPriceService;
     private final PassService passService;
+    private final RazorpayService razorpayService;
 
 
     @Override
     @Transactional
-    public PaymentResponseDto initiatePayment(Long applicationId) {
+    public PaymentResponseDto initiatePayment(Long applicationId) throws RazorpayException {
 
         PassApplication passApplication = passApplicationRepository.findById(applicationId).orElseThrow(() -> new ResourceNotFoundException("Pass application not found"));
 
@@ -61,7 +63,28 @@ public class PaymentServiceImpl implements PaymentService {
 
         Payment savedPayment = paymentRepository.save(payment);
 
+        String razorpayOrderId = razorpayService.createOrder(amount, passApplication.getApplicationNumber());
+
+        savedPayment.setGatewayOrderId(razorpayOrderId);
+
+        savedPayment = paymentRepository.save(savedPayment);
+
         return modelMapper.map(savedPayment, PaymentResponseDto.class);
+    }
+
+    @Override
+    public PaymentResponseDto verifyAndCompletePayment(Long paymentId, String razorpayOrderId, String razorpayPaymentId, String razorpaySignature) {
+
+        //1. Payment exists
+        //2. Payment is PENDING
+        //3. Stored gatewayOrderId == received razorpayOrderId
+        //4. Razorpay signature is valid
+        //5. Mark payment SUCCESS
+        //6. Store razorpayPaymentId
+        //7. Set paidAt
+        //8. Call issuePass(applicationId)
+
+        return new PaymentResponseDto();
     }
 
     @Override
