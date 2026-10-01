@@ -20,8 +20,6 @@ public class PaymentInitiationResponseDto {
 
     private Long amountInPaise;
 
-    private String currency;
-
     private PaymentStatus paymentStatus;
 
     private String razorpayKeyId;

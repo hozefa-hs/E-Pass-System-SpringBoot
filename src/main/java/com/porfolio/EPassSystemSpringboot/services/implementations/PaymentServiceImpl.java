@@ -1,5 +1,6 @@
 package com.porfolio.EPassSystemSpringboot.services.implementations;
 
+import com.porfolio.EPassSystemSpringboot.dtos.PaymentInitiationResponseDto;
 import com.porfolio.EPassSystemSpringboot.dtos.PaymentResponseDto;
 import com.porfolio.EPassSystemSpringboot.entities.PassApplication;
 import com.porfolio.EPassSystemSpringboot.entities.Payment;
@@ -40,7 +41,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public PaymentResponseDto initiatePayment(Long applicationId) throws RazorpayException {
+    public PaymentInitiationResponseDto initiatePayment(Long applicationId) throws RazorpayException {
 
         PassApplication passApplication = passApplicationRepository.findById(applicationId).orElseThrow(() -> new ResourceNotFoundException("Pass application not found"));
 
@@ -69,28 +70,24 @@ public class PaymentServiceImpl implements PaymentService {
 
         savedPayment = paymentRepository.save(savedPayment);
 
-        return modelMapper.map(savedPayment, PaymentResponseDto.class);
-    }
+        long amountInPaise = savedPayment.getAmount().multiply(BigDecimal.valueOf(100)).longValueExact();
 
-    @Override
-    public PaymentResponseDto verifyAndCompletePayment(Long paymentId, String razorpayOrderId, String razorpayPaymentId, String razorpaySignature) {
-
-        //1. Payment exists
-        //2. Payment is PENDING
-        //3. Stored gatewayOrderId == received razorpayOrderId
-        //4. Razorpay signature is valid
-        //5. Mark payment SUCCESS
-        //6. Store razorpayPaymentId
-        //7. Set paidAt
-        //8. Call issuePass(applicationId)
-
-        return new PaymentResponseDto();
+        return PaymentInitiationResponseDto.builder()
+                .paymentId(savedPayment.getPaymentId())
+                .applicationId(passApplication.getApplicationId())
+                .amount(savedPayment.getAmount())
+                .amountInPaise(amountInPaise)
+                .paymentStatus(savedPayment.getPaymentStatus())
+                .razorpayKeyId(razorpayService.getKeyId())
+                .razorpayOrderId(savedPayment.getGatewayOrderId())
+                .build();
     }
 
     @Override
     @Transactional
-    public PaymentResponseDto markPaymentSuccess(Long paymentId, String gatewayPaymentId) {
+    public PaymentResponseDto verifyAndCompletePayment(Long paymentId, String razorpayOrderId, String razorpayPaymentId, String razorpaySignature) throws RazorpayException {
 
+        //1. Payment exists
         Payment payment = paymentRepository.findById(paymentId).orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
 
         if (payment.getPaymentStatus() == PaymentStatus.SUCCESS) {
@@ -98,20 +95,33 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         if (payment.getPaymentStatus() != PaymentStatus.PENDING) {
-            throw new BusinessException("Only pending payments can be marked as successful");
+            throw new BusinessException("Only pending payments can be verified");
         }
 
+        // Verify that the received order belongs to our payment
+        if (!payment.getGatewayOrderId().equals(razorpayOrderId)) {
+            throw new BusinessException("Invalid Razorpay order");
+        }
+
+        boolean isSignatureValid = razorpayService.verifyPaymentSignature(payment.getGatewayOrderId(), razorpayPaymentId, razorpaySignature);
+
+        if (!isSignatureValid) {
+            throw new BusinessException("Invalid Razorpay payment signature");
+        }
+
+        payment.setGatewayPaymentId(razorpayPaymentId);
         payment.setPaymentStatus(PaymentStatus.SUCCESS);
-        payment.setGatewayPaymentId(gatewayPaymentId);
         payment.setPaidAt(LocalDateTime.now());
 
         Payment savedPayment = paymentRepository.save(payment);
 
-        //issue pass with status active
+        // Issue ACTIVE pass after successful payment
         passService.issuePass(payment.getPassApplication().getApplicationId());
 
         return modelMapper.map(savedPayment, PaymentResponseDto.class);
+
     }
+
 
     @Override
     @Transactional
@@ -142,10 +152,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         List<Payment> paymentList = paymentRepository.findAllByPassApplicationApplicationIdOrderByInitiatedAtDesc(applicationId);
 
-        return paymentList
-                .stream()
-                .map(payment -> modelMapper.map(payment, PaymentResponseDto.class))
-                .toList();
+        return paymentList.stream().map(payment -> modelMapper.map(payment, PaymentResponseDto.class)).toList();
     }
 
 }

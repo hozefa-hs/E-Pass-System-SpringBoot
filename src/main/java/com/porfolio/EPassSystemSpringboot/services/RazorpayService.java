@@ -10,4 +10,6 @@ public interface RazorpayService {
 
     boolean verifyPaymentSignature(String orderId, String paymentId, String signature)throws RazorpayException;
 
+    String getKeyId();
+
 }

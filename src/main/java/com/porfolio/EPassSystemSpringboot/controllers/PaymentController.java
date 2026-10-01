@@ -1,6 +1,8 @@
 package com.porfolio.EPassSystemSpringboot.controllers;
 
+import com.porfolio.EPassSystemSpringboot.dtos.PaymentInitiationResponseDto;
 import com.porfolio.EPassSystemSpringboot.dtos.PaymentResponseDto;
+import com.porfolio.EPassSystemSpringboot.dtos.RazorpayPaymentVerificationRequestDto;
 import com.porfolio.EPassSystemSpringboot.services.PaymentService;
 import com.razorpay.RazorpayException;
 import lombok.RequiredArgsConstructor;
@@ -20,12 +22,54 @@ public class PaymentController {
 
     @PostMapping("/initiate/{applicationId}")
     @PreAuthorize("hasRole('PASSENGER')")
-    public ResponseEntity<PaymentResponseDto> initiatePayment(@PathVariable Long applicationId) throws RazorpayException {
+    public ResponseEntity<PaymentInitiationResponseDto> initiatePayment(@PathVariable Long applicationId) throws RazorpayException {
 
-        PaymentResponseDto paymentResponseDto = paymentService.initiatePayment(applicationId);
+        PaymentInitiationResponseDto paymentInitiationResponseDto = paymentService.initiatePayment(applicationId);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(paymentResponseDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(paymentInitiationResponseDto);
     }
+
+
+    @PostMapping("/{paymentId}/verify")
+    @PreAuthorize("hasRole('PASSENGER')")
+    public ResponseEntity<PaymentResponseDto> verifyPayment(
+            @PathVariable Long paymentId,
+            @RequestBody RazorpayPaymentVerificationRequestDto paymentVerificationRequestDto) throws RazorpayException {
+
+        PaymentResponseDto paymentResponseDto = paymentService.verifyAndCompletePayment(
+                paymentId,
+                paymentVerificationRequestDto.getRazorpayOrderId(),
+                paymentVerificationRequestDto.getRazorpayPaymentId(),
+                paymentVerificationRequestDto.getRazorpaySignature()
+        );
+
+        return ResponseEntity.ok(paymentResponseDto);
+    }
+
+/*
+    POST /payments/initiate/{applicationId}
+            ↓
+    Create local PENDING Payment
+            ↓
+    Create Razorpay Order
+            ↓
+    Store gatewayOrderId
+            ↓
+    Payment happens at Razorpay
+            ↓
+    POST /payments/{paymentId}/verify
+            ↓
+    Compare order ID
+            ↓
+    Verify signature
+            ↓
+    Payment = SUCCESS
+            ↓
+    issuePass()
+            ↓
+    ACTIVE Pass
+*/
+
 
     @GetMapping("/{paymentId}")
     @PreAuthorize("hasRole('PASSENGER')")

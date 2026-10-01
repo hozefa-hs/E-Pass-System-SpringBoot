@@ -1,5 +1,6 @@
 package com.porfolio.EPassSystemSpringboot.services;
 
+import com.porfolio.EPassSystemSpringboot.dtos.PaymentInitiationResponseDto;
 import com.porfolio.EPassSystemSpringboot.dtos.PaymentResponseDto;
 import com.razorpay.RazorpayException;
 
@@ -7,11 +8,9 @@ import java.util.List;
 
 public interface PaymentService {
 
-    PaymentResponseDto initiatePayment(Long applicationId) throws RazorpayException;
+    PaymentInitiationResponseDto initiatePayment(Long applicationId) throws RazorpayException;
 
-    PaymentResponseDto verifyAndCompletePayment(Long paymentId, String razorpayOrderId, String razorpayPaymentId, String razorpaySignature);
-
-    PaymentResponseDto markPaymentSuccess(Long paymentId, String gatewayPaymentId);
+    PaymentResponseDto verifyAndCompletePayment(Long paymentId, String razorpayOrderId, String razorpayPaymentId, String razorpaySignature) throws RazorpayException;
 
     PaymentResponseDto markPaymentFailed(Long paymentId);
 
