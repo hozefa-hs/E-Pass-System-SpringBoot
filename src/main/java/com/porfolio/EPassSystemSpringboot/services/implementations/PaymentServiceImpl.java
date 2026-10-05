@@ -18,6 +18,7 @@ import com.porfolio.EPassSystemSpringboot.services.PaymentService;
 import com.porfolio.EPassSystemSpringboot.services.RazorpayService;
 import com.razorpay.RazorpayException;
 import lombok.RequiredArgsConstructor;
+import org.json.JSONObject;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,9 +42,13 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public PaymentInitiationResponseDto initiatePayment(Long applicationId) throws RazorpayException {
+    public PaymentInitiationResponseDto initiatePayment(Long applicationId, Long userId) throws RazorpayException {
 
-        PassApplication passApplication = passApplicationRepository.findById(applicationId).orElseThrow(() -> new ResourceNotFoundException("Pass application not found"));
+        PassApplication passApplication = passApplicationRepository.findByApplicationIdAndPassengerUserId(applicationId, userId);
+
+        if (passApplication == null) {
+            throw new ResourceNotFoundException("Pass application not found");
+        }
 
         if (passApplication.getApplicationStatus() != ApplicationStatus.APPROVED) {
             throw new BusinessException("Payment can only be initiated for an approved application");
@@ -72,16 +77,35 @@ public class PaymentServiceImpl implements PaymentService {
 
         long amountInPaise = savedPayment.getAmount().multiply(BigDecimal.valueOf(100)).longValueExact();
 
-        return PaymentInitiationResponseDto.builder()
-                .paymentId(savedPayment.getPaymentId())
-                .applicationId(passApplication.getApplicationId())
-                .amount(savedPayment.getAmount())
-                .amountInPaise(amountInPaise)
-                .paymentStatus(savedPayment.getPaymentStatus())
-                .razorpayKeyId(razorpayService.getKeyId())
-                .razorpayOrderId(savedPayment.getGatewayOrderId())
-                .build();
+        return PaymentInitiationResponseDto.builder().paymentId(savedPayment.getPaymentId()).applicationId(passApplication.getApplicationId()).amount(savedPayment.getAmount()).amountInPaise(amountInPaise).paymentStatus(savedPayment.getPaymentStatus()).razorpayKeyId(razorpayService.getKeyId()).razorpayOrderId(savedPayment.getGatewayOrderId()).build();
     }
+
+
+    @Override
+    public Payment completeSuccessfulPayment(Payment payment, String razorpayPaymentId, String paymentMethod) {
+
+        // Idempotency
+        if (payment.getPaymentStatus() == PaymentStatus.SUCCESS) {
+            return payment;
+        }
+
+        if (payment.getPaymentStatus() != PaymentStatus.PENDING) {
+            throw new BusinessException("Only pending payments can be completed");
+        }
+
+        payment.setGatewayPaymentId(razorpayPaymentId);
+        payment.setPaymentMethod(paymentMethod);
+        payment.setPaymentStatus(PaymentStatus.SUCCESS);
+        payment.setPaidAt(LocalDateTime.now());
+
+        Payment savedPayment = paymentRepository.save(payment);
+
+        // Issue ACTIVE pass after successful payment
+        passService.issuePass(payment.getPassApplication().getApplicationId());
+
+        return savedPayment;
+    }
+
 
     @Override
     @Transactional
@@ -109,16 +133,44 @@ public class PaymentServiceImpl implements PaymentService {
             throw new BusinessException("Invalid Razorpay payment signature");
         }
 
-        payment.setGatewayPaymentId(razorpayPaymentId);
-        payment.setPaymentStatus(PaymentStatus.SUCCESS);
-        payment.setPaidAt(LocalDateTime.now());
 
-        Payment savedPayment = paymentRepository.save(payment);
+        com.razorpay.Payment razorpayPayment = razorpayService.fetchPayment(razorpayPaymentId);
 
-        // Issue ACTIVE pass after successful payment
-        passService.issuePass(payment.getPassApplication().getApplicationId());
+        String gatewayPaymentId = String.valueOf(razorpayPayment.get("id"));
+        String gatewayOrderId = String.valueOf(razorpayPayment.get("order_id"));
+        long gatewayAmount = Long.parseLong(String.valueOf(razorpayPayment.get("amount")));
+        String status = String.valueOf(razorpayPayment.get("status"));
+        boolean captured = Boolean.parseBoolean(String.valueOf(razorpayPayment.get("captured")));
 
-        return modelMapper.map(savedPayment, PaymentResponseDto.class);
+        long expectedAmountInPaise = payment.getAmount().multiply(BigDecimal.valueOf(100)).longValueExact();
+
+        // Verify payment ID
+        if (gatewayPaymentId.equals(razorpayPaymentId)) {
+            throw new BusinessException("Invalid Razorpay payment");
+        }
+
+        // Verify order ID
+        if (!payment.getGatewayOrderId().equals(gatewayOrderId)) {
+            throw new BusinessException("Razorpay payment does not belong to this order");
+        }
+
+        // Verify amount
+        if (gatewayAmount != expectedAmountInPaise) {
+            throw new BusinessException("Razorpay payment amount mismatch");
+        }
+
+        //Payment must actually be captured
+        if (!captured || !"captured".equalsIgnoreCase(status)) {
+            throw new BusinessException("Razorpay payment is not captured");
+        }
+
+
+        //Complete local payment + issue pass
+        String paymentMethod = String.valueOf(razorpayPayment.get("method"));
+
+        Payment completedSuccessfulPayment = completeSuccessfulPayment(payment, razorpayPaymentId, paymentMethod);
+
+        return modelMapper.map(completedSuccessfulPayment, PaymentResponseDto.class);
 
     }
 

@@ -3,12 +3,15 @@ package com.porfolio.EPassSystemSpringboot.controllers;
 import com.porfolio.EPassSystemSpringboot.dtos.PaymentInitiationResponseDto;
 import com.porfolio.EPassSystemSpringboot.dtos.PaymentResponseDto;
 import com.porfolio.EPassSystemSpringboot.dtos.RazorpayPaymentVerificationRequestDto;
+import com.porfolio.EPassSystemSpringboot.entities.Users;
 import com.porfolio.EPassSystemSpringboot.services.PaymentService;
 import com.razorpay.RazorpayException;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,9 +25,11 @@ public class PaymentController {
 
     @PostMapping("/initiate/{applicationId}")
     @PreAuthorize("hasRole('PASSENGER')")
-    public ResponseEntity<PaymentInitiationResponseDto> initiatePayment(@PathVariable Long applicationId) throws RazorpayException {
+    public ResponseEntity<PaymentInitiationResponseDto> initiatePayment(
+            @PathVariable Long applicationId,
+            @AuthenticationPrincipal Users user) throws RazorpayException {
 
-        PaymentInitiationResponseDto paymentInitiationResponseDto = paymentService.initiatePayment(applicationId);
+        PaymentInitiationResponseDto paymentInitiationResponseDto = paymentService.initiatePayment(applicationId, user.getUserId());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(paymentInitiationResponseDto);
     }
@@ -34,7 +39,7 @@ public class PaymentController {
     @PreAuthorize("hasRole('PASSENGER')")
     public ResponseEntity<PaymentResponseDto> verifyPayment(
             @PathVariable Long paymentId,
-            @RequestBody RazorpayPaymentVerificationRequestDto paymentVerificationRequestDto) throws RazorpayException {
+            @RequestBody @Valid RazorpayPaymentVerificationRequestDto paymentVerificationRequestDto) throws RazorpayException {
 
         PaymentResponseDto paymentResponseDto = paymentService.verifyAndCompletePayment(
                 paymentId,

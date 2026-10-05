@@ -1,10 +1,7 @@
 package com.porfolio.EPassSystemSpringboot.services.implementations;
 
 import com.porfolio.EPassSystemSpringboot.services.RazorpayService;
-import com.razorpay.Order;
-import com.razorpay.RazorpayClient;
-import com.razorpay.RazorpayException;
-import com.razorpay.Utils;
+import com.razorpay.*;
 import lombok.RequiredArgsConstructor;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
@@ -59,4 +56,12 @@ public class RazorpayServiceImpl implements RazorpayService {
     public String getKeyId() {
         return keyId;
     }
+
+    @Override
+    public Payment fetchPayment(String paymentId) throws RazorpayException {
+
+        return razorpayClient.payments.fetch(paymentId);
+
+    }
+
 }
