@@ -11,14 +11,14 @@ public interface PaymentService {
 
     PaymentInitiationResponseDto initiatePayment(Long applicationId, Long userId) throws RazorpayException;
 
-    PaymentResponseDto verifyAndCompletePayment(Long paymentId, String razorpayOrderId, String razorpayPaymentId, String razorpaySignature) throws RazorpayException;
+    PaymentResponseDto verifyAndCompletePayment(Long paymentId, String razorpayOrderId, String razorpayPaymentId, String razorpaySignature, Long userId) throws RazorpayException;
 
     Payment completeSuccessfulPayment(Payment payment, String razorpayPaymentId, String paymentMethod);
 
     PaymentResponseDto markPaymentFailed(Long paymentId);
 
-    PaymentResponseDto getOwnPayment(Long paymentId);
+    PaymentResponseDto getOwnPayment(Long paymentId, Long userId);
 
-    List<PaymentResponseDto> getAllPaymentsByApplication(Long applicationId);
+    List<PaymentResponseDto> getAllPaymentsByApplication(Long applicationId, Long userId);
 
 }

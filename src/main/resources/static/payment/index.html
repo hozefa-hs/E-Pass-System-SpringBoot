@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>E-Pass Payment</title>
+</head>
+
+<body>
+
+<h2>E-Pass Payment</h2>
+
+<label>
+    Application ID:
+    <input type="number" id="applicationId" value="1">
+</label>
+
+<br><br>
+
+<label>
+    JWT Token:
+    <input type="password" id="jwtToken" placeholder="Paste your JWT token">
+</label>
+
+<br><br>
+
+<p>
+    Amount:
+    ₹<span id="amount">-</span>
+</p>
+
+<button id="payButton">
+    Pay Now
+</button>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<script>
+
+    document.getElementById("payButton").onclick = async function () {
+
+        const applicationId =
+            document.getElementById("applicationId").value;
+
+        const jwtToken =
+            document.getElementById("jwtToken").value;
+
+        if (!applicationId || !jwtToken) {
+            alert("Application ID and JWT token are required.");
+            return;
+        }
+
+        try {
+
+            // Step 1: Create local payment + Razorpay order
+            const initiateResponse = await fetch(
+                `/payments/initiate/${applicationId}`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${jwtToken}`
+                    }
+                }
+            );
+
+            if (!initiateResponse.ok) {
+
+                const error = await initiateResponse.text();
+
+                alert("Payment initiation failed:\n" + error);
+
+                return;
+            }
+
+            const paymentData =
+                await initiateResponse.json();
+
+            console.log("Payment initiation response:", paymentData);
+
+            // Display backend-calculated amount
+            document.getElementById("amount").textContent =
+                paymentData.amount;
+
+            // Step 2: Open Razorpay Checkout
+            const options = {
+
+                key: paymentData.razorpayKeyId,
+
+                amount: paymentData.amountInPaise,
+
+                currency: paymentData.currency,
+
+                name: "E-Pass System",
+
+                description: "E-Pass Application Payment",
+
+                order_id: paymentData.razorpayOrderId,
+
+                handler: async function (response) {
+
+                    console.log(
+                        "Razorpay Payment ID:",
+                        response.razorpay_payment_id
+                    );
+
+                    console.log(
+                        "Razorpay Order ID:",
+                        response.razorpay_order_id
+                    );
+
+                    console.log(
+                        "Razorpay Signature:",
+                        response.razorpay_signature
+                    );
+
+                    // Step 3: Send Razorpay response to backend
+                    const verifyResponse = await fetch(
+                        `/payments/${paymentData.paymentId}/verify`,
+                        {
+                            method: "POST",
+
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${jwtToken}`
+                            },
+
+                            body: JSON.stringify({
+                                razorpayOrderId:
+                                    response.razorpay_order_id,
+
+                                razorpayPaymentId:
+                                    response.razorpay_payment_id,
+
+                                razorpaySignature:
+                                    response.razorpay_signature
+                            })
+                        }
+                    );
+
+                    if (verifyResponse.ok) {
+
+                        const result =
+                            await verifyResponse.json();
+
+                        console.log(
+                            "Payment verification response:",
+                            result
+                        );
+
+                        window.location.href =
+                            "/payment/success.html";
+
+                    } else {
+
+                        const error =
+                            await verifyResponse.text();
+
+                        console.error(
+                            "Payment verification failed:",
+                            error
+                        );
+
+                        window.location.href =
+                            "/payment/failure.html";
+                    }
+                },
+
+                modal: {
+
+                    ondismiss: function () {
+
+                        console.log(
+                            "Razorpay Checkout closed."
+                        );
+                    }
+                }
+            };
+
+            const razorpay =
+                new Razorpay(options);
+
+            // Handle Razorpay payment failure
+            razorpay.on(
+                "payment.failed",
+                function (response) {
+
+                    console.error(
+                        "Payment failed:",
+                        response.error
+                    );
+
+                    window.location.href =
+                        "/payment/failure.html";
+                }
+            );
+
+            razorpay.open();
+
+        } catch (error) {
+
+            console.error(error);
+
+            alert(
+                "Something went wrong while starting payment."
+            );
+        }
+    };
+
+</script>
+
+</body>
+</html>

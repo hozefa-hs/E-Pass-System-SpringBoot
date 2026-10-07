@@ -25,4 +25,6 @@ public class PaymentInitiationResponseDto {
     private String razorpayKeyId;
 
     private String razorpayOrderId;
+
+    private String currency;
 }

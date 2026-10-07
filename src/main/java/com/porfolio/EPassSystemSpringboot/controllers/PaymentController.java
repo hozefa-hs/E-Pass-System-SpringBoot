@@ -39,13 +39,15 @@ public class PaymentController {
     @PreAuthorize("hasRole('PASSENGER')")
     public ResponseEntity<PaymentResponseDto> verifyPayment(
             @PathVariable Long paymentId,
-            @RequestBody @Valid RazorpayPaymentVerificationRequestDto paymentVerificationRequestDto) throws RazorpayException {
+            @RequestBody @Valid RazorpayPaymentVerificationRequestDto paymentVerificationRequestDto,
+            @AuthenticationPrincipal Users user) throws RazorpayException {
 
         PaymentResponseDto paymentResponseDto = paymentService.verifyAndCompletePayment(
                 paymentId,
                 paymentVerificationRequestDto.getRazorpayOrderId(),
                 paymentVerificationRequestDto.getRazorpayPaymentId(),
-                paymentVerificationRequestDto.getRazorpaySignature()
+                paymentVerificationRequestDto.getRazorpaySignature(),
+                user.getUserId()
         );
 
         return ResponseEntity.ok(paymentResponseDto);
@@ -78,16 +80,20 @@ public class PaymentController {
 
     @GetMapping("/{paymentId}")
     @PreAuthorize("hasRole('PASSENGER')")
-    public ResponseEntity<PaymentResponseDto> getOwnPayment(@PathVariable Long paymentId) {
-        PaymentResponseDto payment = paymentService.getOwnPayment(paymentId);
+    public ResponseEntity<PaymentResponseDto> getOwnPayment(
+            @PathVariable Long paymentId,
+            @AuthenticationPrincipal Users user) {
+        PaymentResponseDto payment = paymentService.getOwnPayment(paymentId, user.getUserId());
         return ResponseEntity.ok(payment);
     }
 
     @GetMapping("/application/{applicationId}")
     @PreAuthorize("hasRole('PASSENGER')")
-    public ResponseEntity<List<PaymentResponseDto>> getAllPaymentsByApplication(@PathVariable Long applicationId) {
+    public ResponseEntity<List<PaymentResponseDto>> getAllPaymentsByApplication(
+            @PathVariable Long applicationId,
+            @AuthenticationPrincipal Users user) {
 
-        List<PaymentResponseDto> paymentsByApplication = paymentService.getAllPaymentsByApplication(applicationId);
+        List<PaymentResponseDto> paymentsByApplication = paymentService.getAllPaymentsByApplication(applicationId, user.getUserId());
         return ResponseEntity.ok(paymentsByApplication);
     }
 

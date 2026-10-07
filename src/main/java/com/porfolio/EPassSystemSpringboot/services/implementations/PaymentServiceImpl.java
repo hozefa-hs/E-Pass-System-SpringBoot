@@ -77,7 +77,16 @@ public class PaymentServiceImpl implements PaymentService {
 
         long amountInPaise = savedPayment.getAmount().multiply(BigDecimal.valueOf(100)).longValueExact();
 
-        return PaymentInitiationResponseDto.builder().paymentId(savedPayment.getPaymentId()).applicationId(passApplication.getApplicationId()).amount(savedPayment.getAmount()).amountInPaise(amountInPaise).paymentStatus(savedPayment.getPaymentStatus()).razorpayKeyId(razorpayService.getKeyId()).razorpayOrderId(savedPayment.getGatewayOrderId()).build();
+        return PaymentInitiationResponseDto.builder()
+                .paymentId(savedPayment.getPaymentId())
+                .applicationId(passApplication.getApplicationId())
+                .amount(savedPayment.getAmount())
+                .amountInPaise(amountInPaise)
+                .currency("INR")
+                .paymentStatus(savedPayment.getPaymentStatus())
+                .razorpayKeyId(razorpayService.getKeyId())
+                .razorpayOrderId(savedPayment.getGatewayOrderId())
+                .build();
     }
 
 
@@ -109,10 +118,16 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public PaymentResponseDto verifyAndCompletePayment(Long paymentId, String razorpayOrderId, String razorpayPaymentId, String razorpaySignature) throws RazorpayException {
+    public PaymentResponseDto verifyAndCompletePayment(Long paymentId, String razorpayOrderId, String razorpayPaymentId, String razorpaySignature, Long userId) throws RazorpayException {
 
         //1. Payment exists
         Payment payment = paymentRepository.findById(paymentId).orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
+
+        PassApplication passApplication = passApplicationRepository.findByApplicationIdAndPassengerUserId(payment.getPassApplication().getApplicationId(), userId);
+
+        if (passApplication == null) {
+            throw new ResourceNotFoundException("Pass application not found");
+        }
 
         if (payment.getPaymentStatus() == PaymentStatus.SUCCESS) {
             return modelMapper.map(payment, PaymentResponseDto.class);
@@ -136,22 +151,37 @@ public class PaymentServiceImpl implements PaymentService {
 
         com.razorpay.Payment razorpayPayment = razorpayService.fetchPayment(razorpayPaymentId);
 
-        String gatewayPaymentId = String.valueOf(razorpayPayment.get("id"));
-        String gatewayOrderId = String.valueOf(razorpayPayment.get("order_id"));
-        long gatewayAmount = Long.parseLong(String.valueOf(razorpayPayment.get("amount")));
-        String status = String.valueOf(razorpayPayment.get("status"));
-        boolean captured = Boolean.parseBoolean(String.valueOf(razorpayPayment.get("captured")));
 
+        Object gatewayPaymentIdValue = razorpayPayment.get("id");
+        Object gatewayOrderIdValue = razorpayPayment.get("order_id");
+        Object gatewayAmountValue = razorpayPayment.get("amount");
+        Object statusValue = razorpayPayment.get("status");
+        Object capturedValue = razorpayPayment.get("captured");
+        Object paymentMethodValue = razorpayPayment.get("method");
+        Object currencyValue = razorpayPayment.get("currency");
+
+        String gatewayPaymentId = String.valueOf(gatewayPaymentIdValue);
+        String gatewayOrderId = String.valueOf(gatewayOrderIdValue);
+        long gatewayAmount = Long.parseLong(String.valueOf(gatewayAmountValue));
+        String status = String.valueOf(statusValue);
+        String currency = String.valueOf(currencyValue);
+        boolean captured = Boolean.parseBoolean(String.valueOf(capturedValue));
         long expectedAmountInPaise = payment.getAmount().multiply(BigDecimal.valueOf(100)).longValueExact();
 
+
         // Verify payment ID
-        if (gatewayPaymentId.equals(razorpayPaymentId)) {
+        if (!gatewayPaymentId.equals(razorpayPaymentId)) {
             throw new BusinessException("Invalid Razorpay payment");
         }
 
         // Verify order ID
         if (!payment.getGatewayOrderId().equals(gatewayOrderId)) {
             throw new BusinessException("Razorpay payment does not belong to this order");
+        }
+
+        //Verify currency
+        if (!"INR".equals(currency)) {
+            throw new BusinessException("Invalid payment currency");
         }
 
         // Verify amount
@@ -166,7 +196,7 @@ public class PaymentServiceImpl implements PaymentService {
 
 
         //Complete local payment + issue pass
-        String paymentMethod = String.valueOf(razorpayPayment.get("method"));
+        String paymentMethod = String.valueOf(paymentMethodValue);
 
         Payment completedSuccessfulPayment = completeSuccessfulPayment(payment, razorpayPaymentId, paymentMethod);
 
@@ -192,15 +222,26 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public PaymentResponseDto getOwnPayment(Long paymentId) {
+    public PaymentResponseDto getOwnPayment(Long paymentId, Long userId) {
         Payment payment = paymentRepository.findById(paymentId).orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
+
+        PassApplication passApplication = passApplicationRepository.findByApplicationIdAndPassengerUserId(payment.getPassApplication().getApplicationId(), userId);
+
+        if (passApplication == null) {
+            throw new ResourceNotFoundException("Pass application not found");
+        }
+
         return modelMapper.map(payment, PaymentResponseDto.class);
     }
 
     @Override
-    public List<PaymentResponseDto> getAllPaymentsByApplication(Long applicationId) {
+    public List<PaymentResponseDto> getAllPaymentsByApplication(Long applicationId, Long userId) {
 
-        PassApplication passApplication = passApplicationRepository.findById(applicationId).orElseThrow(() -> new ResourceNotFoundException("Pass application not found"));
+        PassApplication passApplication = passApplicationRepository.findByApplicationIdAndPassengerUserId(applicationId, userId);
+
+        if (passApplication == null) {
+            throw new ResourceNotFoundException("Pass application not found");
+        }
 
         List<Payment> paymentList = paymentRepository.findAllByPassApplicationApplicationIdOrderByInitiatedAtDesc(applicationId);
 
