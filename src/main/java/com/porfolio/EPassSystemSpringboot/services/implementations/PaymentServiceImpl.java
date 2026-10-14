@@ -24,6 +24,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -38,6 +40,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PassPriceService passPriceService;
     private final PassService passService;
     private final RazorpayService razorpayService;
+    private final Clock businessClock;
 
 
     @Override
@@ -54,7 +57,7 @@ public class PaymentServiceImpl implements PaymentService {
             throw new BusinessException("Payment can only be initiated for an approved application");
         }
 
-        if (passRepository.existsByUserAndPassStatus(passApplication.getPassenger(), PassStatus.ACTIVE)) {
+        if (passRepository.existsByUserAndPassStatusAndValidUntilGreaterThanEqual(passApplication.getPassenger(), PassStatus.ACTIVE, LocalDate.now(businessClock))) {
             throw new BusinessException("Passenger already has an active pass");
         }
 
@@ -77,16 +80,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         long amountInPaise = savedPayment.getAmount().multiply(BigDecimal.valueOf(100)).longValueExact();
 
-        return PaymentInitiationResponseDto.builder()
-                .paymentId(savedPayment.getPaymentId())
-                .applicationId(passApplication.getApplicationId())
-                .amount(savedPayment.getAmount())
-                .amountInPaise(amountInPaise)
-                .currency("INR")
-                .paymentStatus(savedPayment.getPaymentStatus())
-                .razorpayKeyId(razorpayService.getKeyId())
-                .razorpayOrderId(savedPayment.getGatewayOrderId())
-                .build();
+        return PaymentInitiationResponseDto.builder().paymentId(savedPayment.getPaymentId()).applicationId(passApplication.getApplicationId()).amount(savedPayment.getAmount()).amountInPaise(amountInPaise).currency("INR").paymentStatus(savedPayment.getPaymentStatus()).razorpayKeyId(razorpayService.getKeyId()).razorpayOrderId(savedPayment.getGatewayOrderId()).build();
     }
 
 

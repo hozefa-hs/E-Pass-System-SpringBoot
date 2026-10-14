@@ -21,6 +21,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -33,6 +35,7 @@ public class PassApplicationServiceImpl implements PassApplicationService {
     private final PassRepository passRepository;
     private final PassApplicationRepository passApplicationRepository;
     private final ModelMapper modelMapper;
+    private final Clock businessClock;
 
 
     @Override
@@ -44,7 +47,7 @@ public class PassApplicationServiceImpl implements PassApplicationService {
             throw new BusinessException("Only passengers can apply for pass");
         }
 
-        if (passRepository.existsByUserAndPassStatus(passenger, PassStatus.ACTIVE)) {
+        if (passRepository.existsByUserAndPassStatusAndValidUntilGreaterThanEqual(passenger, PassStatus.ACTIVE, LocalDate.now(businessClock))) {
             throw new BusinessException("You already have an active pass");
         }
 
@@ -69,10 +72,7 @@ public class PassApplicationServiceImpl implements PassApplicationService {
 
         List<PassApplication> applicationList = passApplicationRepository.findAllByPassengerUserId(userId);
 
-        return applicationList
-                .stream()
-                .map(passApplication -> modelMapper.map(passApplication, PassApplicationResponseDto.class))
-                .toList();
+        return applicationList.stream().map(passApplication -> modelMapper.map(passApplication, PassApplicationResponseDto.class)).toList();
     }
 
     @Override
@@ -86,8 +86,7 @@ public class PassApplicationServiceImpl implements PassApplicationService {
 
         Page<PassApplication> allPendingApplications = passApplicationRepository.findAllByApplicationStatus(ApplicationStatus.PENDING, pageable);
 
-        return allPendingApplications
-                .map(passApplication -> modelMapper.map(passApplication, PassApplicationResponseDto.class));
+        return allPendingApplications.map(passApplication -> modelMapper.map(passApplication, PassApplicationResponseDto.class));
     }
 
     @Override
@@ -105,11 +104,9 @@ public class PassApplicationServiceImpl implements PassApplicationService {
             if (passApplication == null) {
                 throw new AccessDeniedException("You are not authorized to view this application");
             }
-        }
-        else if (user.getRole() == Role.PASS_OFFICER) {
+        } else if (user.getRole() == Role.PASS_OFFICER) {
             passApplication = passApplicationRepository.findById(applicationId).orElseThrow(() -> new ResourceNotFoundException("Pass application with id " + applicationId + " not found"));
-        }
-        else {
+        } else {
             throw new AccessDeniedException("You are not authorized to view this application");
         }
 
@@ -119,9 +116,6 @@ public class PassApplicationServiceImpl implements PassApplicationService {
 
 
     private String generateApplicationNumber() {
-        return "APP-" + UUID.randomUUID()
-                .toString()
-                .substring(0, 8)
-                .toUpperCase();
+        return "APP-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
 }

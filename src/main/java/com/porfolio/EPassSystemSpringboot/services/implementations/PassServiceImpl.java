@@ -12,9 +12,11 @@ import com.porfolio.EPassSystemSpringboot.repositories.PassRepository;
 import com.porfolio.EPassSystemSpringboot.services.PassService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.cglib.core.Local;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,6 +28,7 @@ public class PassServiceImpl implements PassService {
     private final PassApplicationRepository passApplicationRepository;
     private final PassRepository passRepository;
     private final ModelMapper modelMapper;
+    private final Clock businessClock;
 
 
     @Override
@@ -42,25 +45,17 @@ public class PassServiceImpl implements PassService {
             throw new BusinessException("Pass already exists for application id : " + applicationId);
         }
 
-        if (passRepository.existsByUserAndPassStatus(passApplication.getPassenger(), PassStatus.ACTIVE)) {
+        LocalDate today = LocalDate.now(businessClock);
+
+        if (passRepository.existsByUserAndPassStatusAndValidUntilGreaterThanEqual(passApplication.getPassenger(), PassStatus.ACTIVE, today)) {
             throw new BusinessException("Passenger already has an active pass");
         }
 
 
-        LocalDate validFrom = LocalDate.now();
-        LocalDate validUntil = validFrom.plusMonths(passApplication.getPassValidity().getMonths());
+        LocalDate validFrom = LocalDate.now(businessClock);
+        LocalDate validUntil = validFrom.plusMonths(passApplication.getPassValidity().getMonths()).minusDays(1);
 
-        Pass pass = Pass.builder()
-                .passNumber(generatePassNumber())
-                .qrToken(generateQrToken())
-                .passApplication(passApplication)
-                .user(passApplication.getPassenger())
-                .passType(passApplication.getPassType())
-                .passValidity(passApplication.getPassValidity())
-                .passStatus(PassStatus.ACTIVE)
-                .validFrom(validFrom)
-                .validUntil(validUntil)
-                .build();
+        Pass pass = Pass.builder().passNumber(generatePassNumber()).qrToken(generateQrToken()).passApplication(passApplication).user(passApplication.getPassenger()).passType(passApplication.getPassType()).passValidity(passApplication.getPassValidity()).passStatus(PassStatus.ACTIVE).validFrom(validFrom).validUntil(validUntil).build();
 
         Pass savedPass = passRepository.save(pass);
 
@@ -68,12 +63,8 @@ public class PassServiceImpl implements PassService {
     }
 
 
-
     private String generatePassNumber() {
-        return "PASS-" + UUID.randomUUID()
-                .toString()
-                .substring(0, 8)
-                .toUpperCase();
+        return "PASS-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
 
     private String generateQrToken() {
