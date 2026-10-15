@@ -57,7 +57,7 @@ public class PassApplication {
     @Version   //optimistic lock
     private Long version;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private Long reviewedByOfficerId;
 
 

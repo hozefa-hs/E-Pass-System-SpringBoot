@@ -2,6 +2,7 @@ package com.porfolio.EPassSystemSpringboot.services.implementations;
 
 import com.porfolio.EPassSystemSpringboot.dtos.CreatePassApplicationDto;
 import com.porfolio.EPassSystemSpringboot.dtos.PassApplicationResponseDto;
+import com.porfolio.EPassSystemSpringboot.dtos.ResubmitPassApplicationRequestDto;
 import com.porfolio.EPassSystemSpringboot.entities.PassApplication;
 import com.porfolio.EPassSystemSpringboot.entities.Users;
 import com.porfolio.EPassSystemSpringboot.enums.ApplicationStatus;
@@ -20,6 +21,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
@@ -112,6 +114,32 @@ public class PassApplicationServiceImpl implements PassApplicationService {
 
         return modelMapper.map(passApplication, PassApplicationResponseDto.class);
 
+    }
+
+    @Transactional
+    public PassApplicationResponseDto resubmitApplication(Long applicationId, Long passengerUserId, ResubmitPassApplicationRequestDto request) {
+
+        PassApplication application = passApplicationRepository.findByApplicationIdAndPassengerUserId(applicationId, passengerUserId);
+
+        if (application == null) {
+            throw new ResourceNotFoundException("Application not found");
+        }
+
+        if (application.getApplicationStatus() != ApplicationStatus.REJECTED) {
+            throw new IllegalStateException("Only rejected applications can be resubmitted");
+        }
+
+        application.setPassType(request.getPassType());
+        application.setPassValidity(request.getPassValidity());
+
+        application.setApplicationStatus(ApplicationStatus.PENDING);
+        application.setReviewedAt(null);
+        application.setReviewedByOfficerId(null);
+        application.setRejectionReason(null);
+
+        PassApplication passApplication = passApplicationRepository.save(application);
+
+        return modelMapper.map(passApplication, PassApplicationResponseDto.class);
     }
 
 

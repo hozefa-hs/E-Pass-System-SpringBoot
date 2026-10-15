@@ -2,6 +2,7 @@ package com.porfolio.EPassSystemSpringboot.controllers;
 
 import com.porfolio.EPassSystemSpringboot.dtos.CreatePassApplicationDto;
 import com.porfolio.EPassSystemSpringboot.dtos.PassApplicationResponseDto;
+import com.porfolio.EPassSystemSpringboot.dtos.ResubmitPassApplicationRequestDto;
 import com.porfolio.EPassSystemSpringboot.entities.Users;
 import com.porfolio.EPassSystemSpringboot.services.PassApplicationService;
 import jakarta.validation.Valid;
@@ -57,6 +58,19 @@ public class PassApplicationController {
         PassApplicationResponseDto applicationById = passApplicationService.getApplicationById(applicationId, user.getUserId());
         return ResponseEntity.ok(applicationById);
     }
+
+
+    @PutMapping("/{applicationId}/resubmit")
+    @PreAuthorize("hasRole('PASSENGER')")
+    public ResponseEntity<PassApplicationResponseDto> resubmitApplication(
+            @PathVariable Long applicationId,
+            @Valid @RequestBody ResubmitPassApplicationRequestDto requestDto,
+            @AuthenticationPrincipal Users user) {
+
+        PassApplicationResponseDto responseDto = passApplicationService.resubmitApplication(applicationId, user.getUserId(), requestDto);
+        return ResponseEntity.ok(responseDto);
+    }
+
 
 
 }
