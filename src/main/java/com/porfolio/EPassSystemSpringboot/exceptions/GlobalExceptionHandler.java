@@ -1,6 +1,7 @@
 package com.porfolio.EPassSystemSpringboot.exceptions;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -40,6 +41,15 @@ public class GlobalExceptionHandler {
             HttpServletRequest request) {
 
         return buildErrorResponse(HttpStatus.FORBIDDEN, "You don't have permission to access this resource", request);
+    }
+
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLockingFailureException(
+            OptimisticLockingFailureException exception,
+            HttpServletRequest request) {
+
+        return buildErrorResponse(HttpStatus.CONFLICT, "Application was updated by another officer. Please refresh and try again.", request);
+
     }
 
     @ExceptionHandler(Exception.class)
