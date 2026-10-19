@@ -1,6 +1,7 @@
 package com.porfolio.EPassSystemSpringboot.services.implementations;
 
 import com.porfolio.EPassSystemSpringboot.dtos.PassResponseDto;
+import com.porfolio.EPassSystemSpringboot.dtos.PassValidationResponseDto;
 import com.porfolio.EPassSystemSpringboot.entities.Pass;
 import com.porfolio.EPassSystemSpringboot.entities.PassApplication;
 import com.porfolio.EPassSystemSpringboot.enums.ApplicationStatus;
@@ -60,6 +61,44 @@ public class PassServiceImpl implements PassService {
         Pass savedPass = passRepository.save(pass);
 
         return modelMapper.map(savedPass, PassResponseDto.class);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PassValidationResponseDto validatePass(String qrToken) {
+
+        Pass pass = passRepository.findByQrToken(qrToken).orElseThrow(() -> new ResourceNotFoundException("Pass not found"));
+
+        LocalDate today = LocalDate.now(businessClock);
+
+        boolean valid;
+        String message;
+
+        if (today.isBefore(pass.getValidFrom())) {
+            valid = false;
+            message = "Pass is not yet valid.";
+        } else if (today.isAfter(pass.getValidUntil())) {
+            valid = false;
+            message = "Pass has expired.";
+        } else if (pass.getPassStatus() != PassStatus.ACTIVE) {
+            valid = false;
+            message = "Pass is not active.";
+        } else {
+            valid = true;
+            message = "Pass is valid.";
+        }
+
+        return PassValidationResponseDto.builder()
+                .valid(valid)
+                .message(message)
+                .passNumber(pass.getPassNumber())
+                .passengerUsername(pass.getUser().getUsername())
+                .passType(pass.getPassType())
+                .passValidity(pass.getPassValidity())
+                .passStatus(pass.getPassStatus())
+                .validFrom(pass.getValidFrom())
+                .validUntil(pass.getValidUntil())
+                .build();
     }
 
 

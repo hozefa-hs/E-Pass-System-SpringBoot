@@ -22,6 +22,8 @@ public interface PassRepository extends JpaRepository<Pass, Long> {
 
     boolean existsByUserAndPassStatusAndValidUntilGreaterThanEqual(Users user, PassStatus passStatus, LocalDate today);
 
+    Optional<Pass> findByQrToken(String qrToken);
+
 
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
