@@ -11,6 +11,7 @@ import com.porfolio.EPassSystemSpringboot.exceptions.ResourceNotFoundException;
 import com.porfolio.EPassSystemSpringboot.repositories.PassApplicationRepository;
 import com.porfolio.EPassSystemSpringboot.repositories.PassRepository;
 import com.porfolio.EPassSystemSpringboot.services.PassService;
+import com.porfolio.EPassSystemSpringboot.services.QrCodeService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.cglib.core.Local;
@@ -30,6 +31,7 @@ public class PassServiceImpl implements PassService {
     private final PassRepository passRepository;
     private final ModelMapper modelMapper;
     private final Clock businessClock;
+    private final QrCodeService qrCodeService;
 
 
     @Override
@@ -99,6 +101,24 @@ public class PassServiceImpl implements PassService {
                 .validFrom(pass.getValidFrom())
                 .validUntil(pass.getValidUntil())
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] generateActivePassQrCode(Long passengerUserId) {
+
+        LocalDate today = LocalDate.now(businessClock);
+
+        Pass pass = passRepository.findByUser_UserIdAndPassStatusAndValidFromLessThanEqualAndValidUntilGreaterThanEqual(
+                passengerUserId,
+                PassStatus.ACTIVE,
+                today,
+                today
+        ).orElseThrow(() -> new ResourceNotFoundException("No currently valid active pass found for this passenger"));
+
+        return qrCodeService.generateQrCode(pass.getQrToken(), 300, 300);
+
+
     }
 
 

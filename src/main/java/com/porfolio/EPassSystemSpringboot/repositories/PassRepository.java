@@ -24,6 +24,20 @@ public interface PassRepository extends JpaRepository<Pass, Long> {
 
     Optional<Pass> findByQrToken(String qrToken);
 
+/*
+    SELECT * FROM pass
+        WHERE user_id = 101
+        AND pass_status = 'ACTIVE'
+        AND valid_from <= '2026-10-22'
+        AND valid_until >= '2026-10-22';
+*/
+    Optional<Pass>
+    findByUser_UserIdAndPassStatusAndValidFromLessThanEqualAndValidUntilGreaterThanEqual(
+            Long userId,
+            PassStatus passStatus,
+            LocalDate validFrom,
+            LocalDate validUntil);
+
 
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)

@@ -9,4 +9,6 @@ public interface PassService {
 
     PassValidationResponseDto validatePass(String qrToken);
 
+    byte[] generateActivePassQrCode(Long passengerUserId);
+
 }
