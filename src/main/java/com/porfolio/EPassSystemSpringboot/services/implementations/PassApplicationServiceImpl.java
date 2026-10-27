@@ -16,6 +16,8 @@ import com.porfolio.EPassSystemSpringboot.repositories.UserRepository;
 import com.porfolio.EPassSystemSpringboot.services.PassApplicationService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -38,9 +40,11 @@ public class PassApplicationServiceImpl implements PassApplicationService {
     private final PassApplicationRepository passApplicationRepository;
     private final ModelMapper modelMapper;
     private final Clock businessClock;
+    private final String CACHE_NAME = "applications";
 
 
     @Override
+    @CachePut(cacheNames = CACHE_NAME, key = "#userId")
     public PassApplicationResponseDto createApplication(CreatePassApplicationDto createPassApplicationDto, Long userId) {
 
         Users passenger = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found while creating application"));
@@ -70,6 +74,7 @@ public class PassApplicationServiceImpl implements PassApplicationService {
     }
 
     @Override
+    @Cacheable(cacheNames = CACHE_NAME, key = "#userId")
     public List<PassApplicationResponseDto> getOwnApplications(Long userId) {
 
         List<PassApplication> applicationList = passApplicationRepository.findAllByPassengerUserId(userId);
