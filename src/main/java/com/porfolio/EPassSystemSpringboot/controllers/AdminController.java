@@ -1,5 +1,6 @@
 package com.porfolio.EPassSystemSpringboot.controllers;
 
+import com.porfolio.EPassSystemSpringboot.dtos.PageResponse;
 import com.porfolio.EPassSystemSpringboot.dtos.RegisterUserDto;
 import com.porfolio.EPassSystemSpringboot.dtos.UserResponseDto;
 import com.porfolio.EPassSystemSpringboot.services.AuthService;
@@ -32,13 +33,11 @@ public class AdminController {
     }
 
     @GetMapping("/all-users")
-    public ResponseEntity<Page<UserResponseDto>> getAllUsers(
+    public ResponseEntity<PageResponse<UserResponseDto>> getAllUsers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size) {
 
-        Page<UserResponseDto> allUsers = userService.getAllUsers(page, size);
-
-        return ResponseEntity.ok(allUsers);
+        return ResponseEntity.ok(userService.getAllUsers(page, size));
     }
 
     @DeleteMapping("/delete-user/{userId}")

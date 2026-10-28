@@ -1,5 +1,6 @@
 package com.porfolio.EPassSystemSpringboot.services.implementations;
 
+import com.porfolio.EPassSystemSpringboot.dtos.PageResponse;
 import com.porfolio.EPassSystemSpringboot.dtos.UserResponseDto;
 import com.porfolio.EPassSystemSpringboot.entities.Users;
 import com.porfolio.EPassSystemSpringboot.enums.Role;
@@ -9,6 +10,7 @@ import com.porfolio.EPassSystemSpringboot.repositories.UserRepository;
 import com.porfolio.EPassSystemSpringboot.services.UserService;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,7 +24,8 @@ public class UserServiceIMPL implements UserService {
     private final ModelMapper modelMapper;
 
     @Override
-    public Page<UserResponseDto> getAllUsers(int page, int size) {
+    @Cacheable(cacheNames = "users", key = "#page + ':' + T(java.lang.Math).min(#size, 50)")
+    public PageResponse<UserResponseDto> getAllUsers(int page, int size) {
 
         if (page < 0) {
             throw new BusinessException("Page must not be negative");
@@ -30,10 +33,11 @@ public class UserServiceIMPL implements UserService {
         //size = Math.min(size, 50);
         Pageable pageable = PageRequest.of(page, Math.min(size, 50));
 
-        Page<Users> usersList = userRepository.findAll(pageable);
+        Page<UserResponseDto> result = userRepository
+                .findAll(pageable)
+                .map(user -> modelMapper.map(user, UserResponseDto.class));
 
-        return usersList
-                .map(users -> modelMapper.map(users, UserResponseDto.class));
+        return PageResponse.from(result);
     }
 
     @Override
