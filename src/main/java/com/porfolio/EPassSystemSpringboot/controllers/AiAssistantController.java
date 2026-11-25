@@ -3,6 +3,7 @@ package com.porfolio.EPassSystemSpringboot.controllers;
 import com.porfolio.EPassSystemSpringboot.dtos.AiChatRequestDto;
 import com.porfolio.EPassSystemSpringboot.dtos.AiChatResponseDto;
 import com.porfolio.EPassSystemSpringboot.services.AiAssistantService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,7 +19,7 @@ public class AiAssistantController {
     private final AiAssistantService aiAssistantService;
 
     @PostMapping("/chat")
-    public ResponseEntity<AiChatResponseDto> aiChat(@RequestBody AiChatRequestDto requestDto) {
+    public ResponseEntity<AiChatResponseDto> aiChat(@Valid @RequestBody AiChatRequestDto requestDto) {
 
         AiChatResponseDto responseDto = aiAssistantService.aiAssistantChat(requestDto);
 
